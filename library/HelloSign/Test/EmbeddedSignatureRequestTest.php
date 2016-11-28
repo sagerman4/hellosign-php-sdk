@@ -146,6 +146,7 @@ class EmbeddedSignatureRequestTest extends AbstractTest
 
         $this->assertInstanceOf('HelloSign\SignatureRequest', $response);
         $this->assertNotNull($response->getId());
+        $this->assertSame( count($template->getCustomFields()), count($response->custom_fields));
         $signatures = $response->getSignatures();
         return $signatures[0]->getId();
     }
