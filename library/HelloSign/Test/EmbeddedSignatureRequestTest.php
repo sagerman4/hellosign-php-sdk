@@ -139,6 +139,38 @@ class EmbeddedSignatureRequestTest extends AbstractTest
     /**
      * @group create
      */
+    public function testCreateEmbeddedSignatureRequestWithTemplateMissingSignerRole()
+    {
+        list($template, $request) = $this->getTemplateSignatureRequestObjects();
+
+        if (count($template->getSignerRoles()) < 2) {
+            throw new \IllegalArgumentException('Template must contain at least two signer roles for this test!');
+        }
+
+        $role = $template->getSignerRoles()[0];
+
+        $request->setSigner($role->name, "george@example.com", "George {$role->name}");
+        
+        foreach ($template->getCustomFields() as $i => $field) {
+            $request->setCustomFieldValue($field->name, 'My String');
+        }
+        
+        // Turn it into an embedded request
+        $client_id = $_ENV['CLIENT_ID'];
+        $embedded_request = new EmbeddedSignatureRequest($request, $client_id);
+        
+        // Send it to HelloSign
+        $response = $this->client->createEmbeddedSignatureRequest($embedded_request);
+
+        $this->assertInstanceOf('HelloSign\SignatureRequest', $response);
+        $this->assertNotNull($response->getId());
+        $signatures = $response->getSignatures();
+        return $signatures[0]->getId();
+    }
+    
+    /**
+     * @group create
+     */
     public function testCreateEmbeddedSignatureRequestWithTemplateInvalidCustomField()
     {
         $this->setExpectedException(Error::class, 'Invalid custom field: invalid_field');
@@ -147,9 +179,6 @@ class EmbeddedSignatureRequestTest extends AbstractTest
 
         foreach ($template->getSignerRoles() as $i => $role) {
             $request->setSigner($role->name, "george$i@example.com", "George {$role->name}");
-        }
-        foreach ($template->getCCRoles() as $i => $role) {
-            $request->setCC($role->name, "oscar$i@example.com");
         }
         foreach ($template->getCustomFields() as $i => $field) {
             $request->setCustomFieldValue($field->name, 'My String');
@@ -187,9 +216,6 @@ class EmbeddedSignatureRequestTest extends AbstractTest
 
         $request->setSigner($role->name, "george@example.com", "George {$role->name}");
         
-        foreach ($template->getCCRoles() as $i => $role) {
-            $request->setCC($role->name, "oscar$i@example.com");
-        }
         foreach ($template->getCustomFields() as $i => $field) {
             $request->setCustomFieldValue($field->name, 'My String');
         }
@@ -231,9 +257,6 @@ class EmbeddedSignatureRequestTest extends AbstractTest
 
         $request->setSigner($role->name, "george@example.com", "George {$role->name}");
         
-        foreach ($template->getCCRoles() as $i => $role) {
-            $request->setCC($role->name, "oscar$i@example.com");
-        }
         foreach ($template->getCustomFields() as $i => $field) {
             $request->setCustomFieldValue($field->name, 'My String');
         }
