@@ -114,24 +114,10 @@ class EmbeddedSignatureRequestTest extends AbstractTest
      */
     public function testCreateEmbeddedSignatureRequestWithTemplate()
     {
-        // Get a template
-        
-        $templates = $this->client->getTemplates();
-        $template = $templates[0];
-        
-        // Create the signature request
-
-        $request = new TemplateSignatureRequest;
-        $request->enableTestMode();
-        $request->setTemplateId($template->getId());
-        $request->setSubject('Purchase Order');
-        $request->setMessage('Glad we could come to an agreement.');
+        list($template, $request) = $this->getTemplateSignatureRequestObjects();
 
         foreach ($template->getSignerRoles() as $i => $role) {
             $request->setSigner($role->name, "george$i@example.com", "George {$role->name}");
-        }
-        foreach ($template->getCCRoles() as $i => $role) {
-            $request->setCC($role->name, "oscar$i@example.com");
         }
         foreach ($template->getCustomFields() as $i => $field) {
             $request->setCustomFieldValue($field->name, 'My String');
@@ -157,18 +143,7 @@ class EmbeddedSignatureRequestTest extends AbstractTest
     {
         $this->setExpectedException(Error::class, 'Invalid custom field: invalid_field');
         
-        // Get a template
-        
-        $templates = $this->client->getTemplates();
-        $template = $templates[0];
-        
-        // Create the signature request
-
-        $request = new TemplateSignatureRequest;
-        $request->enableTestMode();
-        $request->setTemplateId($template->getId());
-        $request->setSubject('Purchase Order');
-        $request->setMessage('Glad we could come to an agreement.');
+        list($template, $request) = $this->getTemplateSignatureRequestObjects();
 
         foreach ($template->getSignerRoles() as $i => $role) {
             $request->setSigner($role->name, "george$i@example.com", "George {$role->name}");
@@ -202,18 +177,7 @@ class EmbeddedSignatureRequestTest extends AbstractTest
     {
         $this->setExpectedException(Error::class, 'Response should be returned in JSON format');
         
-        // Get a template
-        
-        $templates = $this->client->getTemplates();
-        $template = $templates[0];
-        
-        // Create the signature request
-
-        $request = new TemplateSignatureRequest;
-        $request->enableTestMode();
-        $request->setTemplateId($template->getId());
-        $request->setSubject('Purchase Order');
-        $request->setMessage('Glad we could come to an agreement.');
+        list($template, $request) = $this->getTemplateSignatureRequestObjects();
 
         if (count($template->getSignerRoles()) < 2) {
             throw new \IllegalArgumentException('Template must contain at least two signer roles for this test!');
@@ -257,18 +221,7 @@ class EmbeddedSignatureRequestTest extends AbstractTest
     {
         $this->setExpectedException(Error::class, 'An identical request is already being processed.');
         
-        // Get a template
-        
-        $templates = $this->client->getTemplates();
-        $template = $templates[0];
-        
-        // Create the signature request
-
-        $request = new TemplateSignatureRequest;
-        $request->enableTestMode();
-        $request->setTemplateId($template->getId());
-        $request->setSubject('Purchase Order');
-        $request->setMessage('Glad we could come to an agreement.');
+        list($template, $request) = $this->getTemplateSignatureRequestObjects();
 
         if (count($template->getSignerRoles()) < 2) {
             throw new \IllegalArgumentException('Template must contain at least two signer roles for this test!');
@@ -321,5 +274,27 @@ class EmbeddedSignatureRequestTest extends AbstractTest
         $sign_url = $response->getSignUrl();
 
         $this->assertNotEmpty($sign_url);
+    }
+    
+    private function getTemplateSignatureRequestObjects() {
+        
+        // Get a template
+        
+        $templates = $this->client->getTemplates();
+        $template = $templates[0];
+        
+        // Create the signature request
+
+        $request = new TemplateSignatureRequest;
+        $request->enableTestMode();
+        $request->setTemplateId($template->getId());
+        $request->setSubject('Purchase Order');
+        $request->setMessage('Glad we could come to an agreement.');
+        
+        foreach ($template->getCCRoles() as $i => $role) {
+            $request->setCC($role->name, "oscar$i@example.com");
+        }
+        
+        return [$template, $request];
     }
 }
