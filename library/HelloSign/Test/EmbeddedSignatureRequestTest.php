@@ -26,12 +26,12 @@
 
 namespace HelloSign\Test;
 
-use HelloSign\UnclaimedDraft;
-
+use HelloSign\Error;
+use HelloSign\EmbeddedSignatureRequest;
 use HelloSign\SignatureRequest;
 use HelloSign\Template;
 use HelloSign\TemplateSignatureRequest;
-use HelloSign\EmbeddedSignatureRequest;
+use HelloSign\UnclaimedDraft;
 
 class EmbeddedSignatureRequestTest extends AbstractTest
 {
@@ -142,6 +142,167 @@ class EmbeddedSignatureRequestTest extends AbstractTest
         $embedded_request = new EmbeddedSignatureRequest($request, $client_id);
         
         // Send it to HelloSign
+        $response = $this->client->createEmbeddedSignatureRequest($embedded_request);
+
+        $this->assertInstanceOf('HelloSign\SignatureRequest', $response);
+        $this->assertNotNull($response->getId());
+        $signatures = $response->getSignatures();
+        return $signatures[0]->getId();
+    }
+    
+    /**
+     * @group create
+     */
+    public function testCreateEmbeddedSignatureRequestWithTemplateInvalidCustomField()
+    {
+        $this->setExpectedException(Error::class, 'Invalid custom field: invalid_field');
+        
+        // Get a template
+        
+        $templates = $this->client->getTemplates();
+        $template = $templates[0];
+        
+        // Create the signature request
+
+        $request = new TemplateSignatureRequest;
+        $request->enableTestMode();
+        $request->setTemplateId($template->getId());
+        $request->setSubject('Purchase Order');
+        $request->setMessage('Glad we could come to an agreement.');
+
+        foreach ($template->getSignerRoles() as $i => $role) {
+            $request->setSigner($role->name, "george$i@example.com", "George {$role->name}");
+        }
+        foreach ($template->getCCRoles() as $i => $role) {
+            $request->setCC($role->name, "oscar$i@example.com");
+        }
+        foreach ($template->getCustomFields() as $i => $field) {
+            $request->setCustomFieldValue($field->name, 'My String');
+        }
+        
+        $request->setCustomFieldValue('invalid_field', 'My String');
+        
+        // Turn it into an embedded request
+        $client_id = $_ENV['CLIENT_ID'];
+        $embedded_request = new EmbeddedSignatureRequest($request, $client_id);
+        
+        // Send it to HelloSign
+        $response = $this->client->createEmbeddedSignatureRequest($embedded_request);
+
+        $this->assertInstanceOf('HelloSign\SignatureRequest', $response);
+        $this->assertNotNull($response->getId());
+        $signatures = $response->getSignatures();
+        return $signatures[0]->getId();
+    }
+    
+    /**
+     * @group create
+     */
+    public function testCreateEmbeddedSignatureRequestWithTemplateInvalidCustomFieldMissingSignerRoles()
+    {
+        $this->setExpectedException(Error::class, 'Response should be returned in JSON format');
+        
+        // Get a template
+        
+        $templates = $this->client->getTemplates();
+        $template = $templates[0];
+        
+        // Create the signature request
+
+        $request = new TemplateSignatureRequest;
+        $request->enableTestMode();
+        $request->setTemplateId($template->getId());
+        $request->setSubject('Purchase Order');
+        $request->setMessage('Glad we could come to an agreement.');
+
+        if (count($template->getSignerRoles()) < 2) {
+            throw new \IllegalArgumentException('Template must contain at least two signer roles for this test!');
+        }
+
+        $role = $template->getSignerRoles()[0];
+
+        $request->setSigner($role->name, "george@example.com", "George {$role->name}");
+        
+        foreach ($template->getCCRoles() as $i => $role) {
+            $request->setCC($role->name, "oscar$i@example.com");
+        }
+        foreach ($template->getCustomFields() as $i => $field) {
+            $request->setCustomFieldValue($field->name, 'My String');
+        }
+        
+        // This needs to be unique, because this request errors out prematurely and 
+        //   causes a template draft to be left open.  Repeats on the same request
+        //   cause a different error.
+        $invalid_field_name = uniqid('', true);
+        
+        $request->setCustomFieldValue($invalid_field_name, 'My String');
+        
+        // Turn it into an embedded request
+        $client_id = $_ENV['CLIENT_ID'];
+        $embedded_request = new EmbeddedSignatureRequest($request, $client_id);
+        
+        // Send it to HelloSign
+        $response = $this->client->createEmbeddedSignatureRequest($embedded_request);
+
+        $this->assertInstanceOf('HelloSign\SignatureRequest', $response);
+        $this->assertNotNull($response->getId());
+        $signatures = $response->getSignatures();
+        return $signatures[0]->getId();
+    }
+    
+    /**
+     * @group create
+     */
+    public function testCreateEmbeddedSignatureRequestWithTemplateInvalidCustomFieldMissingSignerRolesTryTwice()
+    {
+        $this->setExpectedException(Error::class, 'An identical request is already being processed.');
+        
+        // Get a template
+        
+        $templates = $this->client->getTemplates();
+        $template = $templates[0];
+        
+        // Create the signature request
+
+        $request = new TemplateSignatureRequest;
+        $request->enableTestMode();
+        $request->setTemplateId($template->getId());
+        $request->setSubject('Purchase Order');
+        $request->setMessage('Glad we could come to an agreement.');
+
+        if (count($template->getSignerRoles()) < 2) {
+            throw new \IllegalArgumentException('Template must contain at least two signer roles for this test!');
+        }
+
+        $role = $template->getSignerRoles()[0];
+
+        $request->setSigner($role->name, "george@example.com", "George {$role->name}");
+        
+        foreach ($template->getCCRoles() as $i => $role) {
+            $request->setCC($role->name, "oscar$i@example.com");
+        }
+        foreach ($template->getCustomFields() as $i => $field) {
+            $request->setCustomFieldValue($field->name, 'My String');
+        }
+        
+        // This needs to be unique, because this request errors out prematurely and 
+        //   causes a template draft to be left open.  Repeats on the same request
+        //   cause a different error.  That's actually what we are testing in this test! ;)
+        $invalid_field_name = uniqid('', true);
+        
+        $request->setCustomFieldValue($invalid_field_name, 'My String');
+        
+        // Turn it into an embedded request
+        $client_id = $_ENV['CLIENT_ID'];
+        $embedded_request = new EmbeddedSignatureRequest($request, $client_id);
+        
+        // Send it to HelloSign
+        try {
+            $this->client->createEmbeddedSignatureRequest($embedded_request);
+        } catch (Error $e) {
+            $this->assertSame('Response should be returned in JSON format', $e->getMessage());
+        }
+        
         $response = $this->client->createEmbeddedSignatureRequest($embedded_request);
 
         $this->assertInstanceOf('HelloSign\SignatureRequest', $response);
